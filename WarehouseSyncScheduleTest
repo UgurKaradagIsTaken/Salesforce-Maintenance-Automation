@@ -1,0 +1,27 @@
+@isTest
+private class WarehouseSyncScheduleTest {
+    @isTest
+    static void testScheduledJob() {
+        // Set up test data
+        List<Warehouse__c> warehouses = new List<Warehouse__c>();
+        warehouses.add(new Warehouse__c(Name='Warehouse 1'));
+        warehouses.add(new Warehouse__c(Name='Warehouse 2'));
+        insert warehouses;
+
+        // Call the schedule method
+        Test.startTest();
+        String jobId = System.schedule('Warehouse Sync Job', '0 0 * * * ?', new WarehouseSyncSchedule());
+        Test.stopTest();
+
+        // Verify that the job has been queued
+        List<CronTrigger> cronTriggers = [SELECT Id, CronExpression, CronJobDetail.Name, State FROM CronTrigger WHERE CronJobDetail.Name = 'WarehouseSyncSchedule'];
+        System.assertEquals(1, cronTriggers.size());
+        System.assertEquals('Warehouse Sync Job', cronTriggers[0].CronJobDetail.Name);
+        System.assertEquals('WAITING', cronTriggers[0].State);
+
+        // Wait for the scheduled job to complete
+        Test.startTest();
+        System.abortJob(jobId);
+        Test.stopTest();
+    }
+}
