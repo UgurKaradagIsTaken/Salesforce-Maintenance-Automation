@@ -1,0 +1,33 @@
+public class MaintenanceRequestHelper {
+    
+    public static void createMaintenanceRequests(List<Case> cases) {
+        List<Maintenance_Request__c> maintenanceRequests = new List<Maintenance_Request__c>();
+        
+        for (Case c : cases) {
+            if (c.IsClosed && (c.Type == 'Repair' || c.Type == 'Routine Maintenance')) {
+                Equipment__c equipment = [SELECT Id, Maintenance_Cycle__c FROM Equipment__c WHERE Id = :c.Equipment__c LIMIT 1];
+                
+                if (equipment != null && equipment.Maintenance_Cycle__c != null) {
+                    Integer maintenanceCycle = Integer.valueOf(equipment.Maintenance_Cycle__c);
+                    
+                    Date dueDate = Date.today().addDays(maintenanceCycle);
+                    
+                    if (maintenanceCycle != null && maintenanceCycle > 0) {
+                        Maintenance_Request__c maintenanceRequest = new Maintenance_Request__c(
+                            Type__c = 'Routine Maintenance',
+                            Subject__c = c.Subject,
+                            Vehicle__c = c.Vehicle__c,
+                            Equipment__c = c.Equipment__c,
+                            Report_Date__c = Date.today(),
+                            Due_Date__c = dueDate
+                        );
+                        
+                        maintenanceRequests.add(maintenanceRequest);
+                    }
+                }
+            }
+        }
+        
+        insert maintenanceRequests;
+    }
+}
