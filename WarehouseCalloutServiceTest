@@ -1,0 +1,86 @@
+@isTest
+public class WarehouseCalloutServiceTest {
+
+    // Positive test case
+    @isTest
+    static void testPositiveCallout() {
+        // Create test data
+        Maintenance_Request__c mr = new Maintenance_Request__c(
+            Equipment__c = 'Test Equipment',
+            Vehicle__c = 'Test Vehicle',
+            Due_Date__c = Date.today().addDays(7),
+            Status__c = 'Open'
+        );
+        insert mr;
+
+        // Set up mock response
+        WarehouseCalloutServiceMock.mockResponse = '{"success": true, "message": "Warehouse synced successfully."}';
+
+        // Make callout
+        Test.startTest();
+        WarehouseCalloutService.makeCallout(mr.Id);
+        Test.stopTest();
+
+        // Verify response
+        System.assertEquals(true, WarehouseCalloutServiceMock.lastRequestSuccess);
+        System.assertEquals('Warehouse synced successfully.', WarehouseCalloutServiceMock.lastRequestMessage);
+    }
+
+    // Negative test case
+    @isTest
+    static void testNegativeCallout() {
+        // Create test data
+        Maintenance_Request__c mr = new Maintenance_Request__c(
+            Equipment__c = 'Test Equipment',
+            Vehicle__c = 'Test Vehicle',
+            Due_Date__c = Date.today().addDays(7),
+            Status__c = 'Open'
+        );
+        insert mr;
+
+        // Set up mock response
+        WarehouseCalloutServiceMock.mockResponse = '{"success": false, "message": "Error syncing with warehouse."}';
+
+        // Make callout
+        Test.startTest();
+        WarehouseCalloutService.makeCallout(mr.Id);
+        Test.stopTest();
+
+        // Verify response
+        System.assertEquals(false, WarehouseCalloutServiceMock.lastRequestSuccess);
+        System.assertEquals('Error syncing with warehouse.', WarehouseCalloutServiceMock.lastRequestMessage);
+    }
+
+    // Bulk test case
+    @isTest
+    static void testBulkCallout() {
+        // Create test data
+        List<Maintenance_Request__c> mrs = new List<Maintenance_Request__c>();
+        for (Integer i = 0; i < 200; i++) {
+            Maintenance_Request__c mr = new Maintenance_Request__c(
+                Equipment__c = 'Test Equipment ' + i,
+                Vehicle__c = 'Test Vehicle ' + i,
+                Due_Date__c = Date.today().addDays(7),
+                Status__c = 'Open'
+            );
+            mrs.add(mr);
+        }
+        insert mrs;
+
+        // Set up mock response
+        WarehouseCalloutServiceMock.mockResponse = '{"success": true, "message": "Warehouse synced successfully."}';
+
+        // Make callouts
+        Test.startTest();
+        for (Maintenance_Request__c mr : mrs) {
+            WarehouseCalloutService.makeCallout(mr.Id);
+        }
+        Test.stopTest();
+
+        // Verify responses
+        for (WarehouseCalloutServiceMock mock : WarehouseCalloutServiceMock.mocks) {
+            System.assertEquals(true, mock.lastRequestSuccess);
+            System.assertEquals('Warehouse synced successfully.', mock.lastRequestMessage);
+        }
+    }
+}
