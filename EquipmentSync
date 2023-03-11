@@ -1,0 +1,37 @@
+public with sharing class EquipmentSync {
+    
+    private static final String WAREHOUSE_URL = 'https://th-superbadge-apex.herokuapp.com/equipment';
+    private static final Datetime HQ_START_TIME = Datetime.newInstance(Date.today(), Time.newInstance(9, 0, 0)); // HQ start time in UTC
+    private static final Datetime OFF_HOURS_TIME = Datetime.newInstance(Date.today(), Time.newInstance(1, 0, 0)); // Off hours time in UTC
+    
+    @Future(callout=true)
+    public static void syncEquipment() {
+        Datetime now = Datetime.now();
+        if (now < HQ_START_TIME || now >= HQ_START_TIME.addDays(1)) {
+            // Do not run during HQ's work hours
+            return;
+        }
+        HttpRequest request = new HttpRequest();
+        request.setEndpoint(WAREHOUSE_URL);
+        request.setMethod('GET');
+        HttpResponse response = new Http().send(request);
+        if (response.getStatusCode() == 200) {
+            List<Equipment__c> equipmentToUpdate = new List<Equipment__c>();
+            List<Map<String, Object>> equipmentData = (List<Map<String, Object>>) JSON.deserializeUntyped(response.getBody());
+            for (Map<String, Object> data : equipmentData) {
+                Equipment__c equipment = new Equipment__c();
+                equipment.Warehouse_SKU__c = (String) data.get('sku');
+                equipment.Replacement_Part__c = true;
+                equipment.Cost__c = (Decimal) data.get('cost');
+                equipment.Current_Inventory__c = (Integer) data.get('inventory');
+                equipment.Lifespan__c = (Integer) data.get('lifespan');
+                equipment.Maintenance_Cycle__c = (Integer) data.get('maintenanceCycle');
+                equipmentToUpdate.add(equipment);
+            }
+            upsert equipmentToUpdate Warehouse_SKU__c;
+        } else {
+            System.debug('Warehouse callout failed with status code ' + response.getStatusCode() + ' and message ' + response.getStatus());
+        }
+    }
+    
+}
